@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  purchaseInvoices     PurchaseInvoice[]
+  gstr2bInvoices       GSTR2BInvoice[]
+  reconciliationResults ReconciliationResult[]
+  reconciliationSessions ReconciliationSession[]
+
+  @@map("users")
+}
+
+model ReconciliationSession {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  name      String?
+  period    String?  // e.g. "Jan 2024"
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purchaseInvoices      PurchaseInvoice[]
+  gstr2bInvoices        GSTR2BInvoice[]
+  reconciliationResults ReconciliationResult[]
+
+  @@map("reconciliation_sessions")
+}
+
+model PurchaseInvoice {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  sessionId      String   @map("session_id")
+  invoiceNo      String   @map("invoice_no")
+  supplierGstin  String   @map("supplier_gstin")
+  invoiceDate    String?  @map("invoice_date")
+  gstAmount      Float    @map("gst_amount")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user    User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session ReconciliationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("purchase_invoices")
+}
+
+model GSTR2BInvoice {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  sessionId      String   @map("session_id")
+  invoiceNo      String   @map("invoice_no")
+  supplierGstin  String   @map("supplier_gstin")
+  gstAmount      Float    @map("gst_amount")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user    User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session ReconciliationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("gstr2b_invoices")
+}
+
+model ReconciliationResult {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  sessionId      String   @map("session_id")
+  invoiceNo      String   @map("invoice_no")
+  supplierGstin  String   @map("supplier_gstin")
+  booksGst       Float?   @map("books_gst")
+  gstr2bGst      Float?   @map("gstr2b_gst")
+  status         String   // MATCHED, MISSING_IN_2B, AMOUNT_MISMATCH, MISSING_IN_BOOKS
+  remark         String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user    User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session ReconciliationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("reconciliation_results")
+}

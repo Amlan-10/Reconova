@@ -1,0 +1,268 @@
+---
+
+# Tech Stack Document (UI/UX-Aligned)  
+**Product:** GST Reconciliation SaaS (Reconova)  
+**Design Principle:** Modern SaaS UI, fast interactions, scalable architecture, AI-ready
+
+---
+
+## 1. Frontend Stack (Premium SaaS Experience)
+
+### Core Framework
+- **Next.js (React Framework)**  
+Why:
+- Fast performance (SSR/SSG)
+- SEO ready (future marketing site)
+- Ideal for SaaS dashboards
+
+---
+
+### UI Framework
+
+- **Tailwind CSS**
+- **shadcn/ui** (Highly recommended)
+- **Framer Motion** (for animations)
+
+Matches your design needs:
+- Dark mode support (#020303)
+- Custom green theme (#1C9719)
+- Modern SaaS look
+
+---
+
+### Frontend Libraries
+
+| Purpose | Tool |
+|---------|------|
+API calls | Axios |
+Forms | React Hook Form |
+Validation | Zod |
+Charts | Recharts |
+Tables | TanStack Table |
+File Upload | React Dropzone |
+Auth handling | NextAuth (optional) |
+
+---
+
+### Design System Implementation
+
+Color Tokens:
+
+```
+Primary: #1C9719
+Primary Hover: #224C1E
+Background Dark: #020303
+Surface: #E2E8E4
+Text Secondary: #A3A3A3
+Danger: #BE3A1F
+```
+
+Fonts:
+- Inter (UI)
+- JetBrains Mono (data / invoice view)
+
+---
+
+## 2. Backend Stack
+
+### Core
+- **Node.js**
+- **Express.js** or **NestJS**
+
+If you want scalable structure → **NestJS**
+
+---
+
+### Key Libraries
+
+| Feature | Library |
+|---------|--------|
+Auth | JWT + bcrypt |
+File upload | Multer |
+CSV parsing | csv-parser |
+Excel support | xlsx |
+Validation | Joi / Zod |
+Email | Nodemailer |
+
+---
+
+## 3. Database
+
+### Primary
+- **PostgreSQL**
+
+Cloud Options:
+- Neon (best)
+- Supabase
+- AWS RDS
+
+---
+
+### ORM (Important)
+
+Use:
+- **Prisma**
+
+Why:
+- Clean schema
+- Type safety
+- Easy migrations
+- Works great with Next.js
+
+---
+
+## 4. File Storage
+
+### MVP
+- Local storage
+
+### Production
+- **AWS S3** or **Cloudflare R2**
+
+For:
+- Uploaded CSVs
+- Generated reports
+
+---
+
+## 5. Reconciliation Engine
+
+Runs in backend service.
+
+Future scalable option:
+- Background jobs using **BullMQ + Redis**
+
+For:
+- Large files
+- Async processing
+- Email notifications
+
+---
+
+## 6. AI-Ready Architecture (Future Differentiator)
+
+Even if not used immediately, keep structure ready.
+
+Add later:
+- OpenAI / Azure OpenAI
+- Features:
+  - AI mismatch explanation
+  - AI compliance suggestions
+  - Natural language queries:
+    - “How much ITC is at risk?”
+
+---
+
+## 7. Authentication & Security
+
+- JWT Authentication
+- Role support (Phase 2)
+  - CA
+  - Client
+
+Security:
+- Password hashing (bcrypt)
+- Rate limiting (express-rate-limit)
+- File size limits
+- Input sanitization
+
+---
+
+## 8. Deployment Stack
+
+| Component | Platform |
+|-----------|---------|
+Frontend | Vercel |
+Backend | Render / Railway |
+Database | Neon |
+Storage | AWS S3 |
+Domain | Cloudflare |
+
+---
+
+## 9. Observability (Important for SaaS)
+
+Logging:
+- Winston / Pino
+
+Error tracking:
+- Sentry
+
+Analytics:
+- PostHog / Plausible
+
+---
+
+## 10. Micro-Interactions (UX Alignment)
+
+Use:
+- Framer Motion for:
+  - Button hover elevation
+  - Loading skeletons
+  - “Processing reconciliation” animation
+
+Use loading states:
+- Skeleton tables
+- Progress indicator during CSV processing
+
+This matches your **“AI magic” feel**.
+
+---
+
+## 11. Architecture Summary
+
+**Frontend**
+- Next.js
+- Tailwind
+- shadcn/ui
+- Framer Motion
+
+**Backend**
+- Node.js + NestJS
+- Prisma ORM
+
+**Database**
+- PostgreSQL (Neon)
+
+**Cloud**
+- Vercel + Render
+
+**Storage**
+- S3
+
+---
+
+## 12. Why This Stack (Strategic)
+
+This setup gives you:
+
+- Enterprise-level UI
+- AI-ready foundation
+- Multi-tenant scalability
+- Easy SaaS deployment
+- Investor/startup-level architecture
+
+Not just a project — a real product base.
+
+---
+
+## 13. MVP Stack (If you want fast launch)
+
+If speed is priority:
+
+Frontend:
+- Next.js + Tailwind
+
+Backend:
+- Express
+
+DB:
+- PostgreSQL + Prisma
+
+Deploy:
+- Vercel + Render
+
+You can build this in **30–40 days**.
+
+---
+

@@ -1,0 +1,195 @@
+import { Response } from "express";
+import prisma from "../config/db";
+import { AuthRequest } from "../middleware/auth";
+import { parseFile } from "../services/csvParser";
+import fs from "fs";
+
+/**
+ * Create a new reconciliation session.
+ */
+export const createSession = async (
+    req: AuthRequest,
+    res: Response
+): Promise<void> => {
+    try {
+        const { name, period } = req.body;
+
+        const session = await prisma.reconciliationSession.create({
+            data: {
+                userId: req.userId!,
+                name: name || `Reconciliation ${new Date().toLocaleDateString()}`,
+                period: period || null,
+            },
+        });
+
+        res.status(201).json({ session });
+    } catch (error) {
+        console.error("Create session error:", error);
+        res.status(500).json({ error: "Failed to create session." });
+    }
+};
+
+/**
+ * Get all sessions for the current user.
+ */
+export const getSessions = async (
+    req: AuthRequest,
+    res: Response
+): Promise<void> => {
+    try {
+        const sessions = await prisma.reconciliationSession.findMany({
+            where: { userId: req.userId! },
+            orderBy: { createdAt: "desc" },
+            include: {
+                _count: {
+                    select: {
+                        purchaseInvoices: true,
+                        gstr2bInvoices: true,
+                        reconciliationResults: true,
+                    },
+                },
+            },
+        });
+
+        res.json({ sessions });
+    } catch (error) {
+        console.error("Get sessions error:", error);
+        res.status(500).json({ error: "Failed to fetch sessions." });
+    }
+};
+
+/**
+ * Upload Purchase Register CSV/Excel for a session.
+ */
+export const uploadPurchaseRegister = async (
+    req: AuthRequest,
+    res: Response
+): Promise<void> => {
+    try {
+        const { sessionId } = req.params;
+
+        if (!req.file) {
+            res.status(400).json({ error: "No file uploaded." });
+            return;
+        }
+
+        // Verify session belongs to user
+        const session = await prisma.reconciliationSession.findFirst({
+            where: { id: sessionId, userId: req.userId! },
+        });
+
+        if (!session) {
+            res.status(404).json({ error: "Session not found." });
+            return;
+        }
+
+        // Parse file
+        const invoices = await parseFile(req.file.path);
+
+        if (invoices.length === 0) {
+            res.status(400).json({
+                error: "No valid invoices found. Ensure columns include: Invoice No, Supplier GSTIN, GST Amount.",
+            });
+            return;
+        }
+
+        // Clear previous purchase invoices for this session
+        await prisma.purchaseInvoice.deleteMany({
+            where: { sessionId, userId: req.userId! },
+        });
+
+        // Store parsed invoices
+        await prisma.purchaseInvoice.createMany({
+            data: invoices.map((inv) => ({
+                userId: req.userId!,
+                sessionId,
+                invoiceNo: inv.invoiceNo,
+                supplierGstin: inv.supplierGstin,
+                invoiceDate: inv.invoiceDate || null,
+                gstAmount: inv.gstAmount,
+            })),
+        });
+
+        // Clean up uploaded file
+        fs.unlinkSync(req.file.path);
+
+        res.json({
+            message: `Successfully uploaded ${invoices.length} purchase invoices.`,
+            count: invoices.length,
+        });
+    } catch (error) {
+        console.error("Upload purchase register error:", error);
+        // Clean up file on error
+        if (req.file) {
+            try { fs.unlinkSync(req.file.path); } catch (_) { }
+        }
+        res.status(500).json({ error: "Failed to process purchase register file." });
+    }
+};
+
+/**
+ * Upload GSTR-2B CSV/Excel for a session.
+ */
+export const uploadGSTR2B = async (
+    req: AuthRequest,
+    res: Response
+): Promise<void> => {
+    try {
+        const { sessionId } = req.params;
+
+        if (!req.file) {
+            res.status(400).json({ error: "No file uploaded." });
+            return;
+        }
+
+        // Verify session belongs to user
+        const session = await prisma.reconciliationSession.findFirst({
+            where: { id: sessionId, userId: req.userId! },
+        });
+
+        if (!session) {
+            res.status(404).json({ error: "Session not found." });
+            return;
+        }
+
+        // Parse file
+        const invoices = await parseFile(req.file.path);
+
+        if (invoices.length === 0) {
+            res.status(400).json({
+                error: "No valid invoices found. Ensure columns include: Invoice No, Supplier GSTIN, GST Amount.",
+            });
+            return;
+        }
+
+        // Clear previous GSTR-2B invoices for this session
+        await prisma.gSTR2BInvoice.deleteMany({
+            where: { sessionId, userId: req.userId! },
+        });
+
+        // Store parsed invoices
+        await prisma.gSTR2BInvoice.createMany({
+            data: invoices.map((inv) => ({
+                userId: req.userId!,
+                sessionId,
+                invoiceNo: inv.invoiceNo,
+                supplierGstin: inv.supplierGstin,
+                gstAmount: inv.gstAmount,
+            })),
+        });
+
+        // Clean up uploaded file
+        fs.unlinkSync(req.file.path);
+
+        res.json({
+            message: `Successfully uploaded ${invoices.length} GSTR-2B invoices.`,
+            count: invoices.length,
+        });
+    } catch (error) {
+        console.error("Upload GSTR-2B error:", error);
+        if (req.file) {
+            try { fs.unlinkSync(req.file.path); } catch (_) { }
+        }
+        res.status(500).json({ error: "Failed to process GSTR-2B file." });
+    }
+};

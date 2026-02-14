@@ -1,0 +1,332 @@
+Here is a **real startup-level PRD** for your GST SaaS. This is written so you can:
+
+* Build the product
+* Show to developers (or yourself)
+* Use it for pitching / planning
+
+---
+
+# Product Requirements Document (PRD)
+
+**Product Name (placeholder):** Reconova (change if you choose another)
+**Version:** MVP – Phase 1
+**Focus:** GST Reconciliation (Purchase vs GSTR-2B)
+
+---
+
+## 1. Product Overview
+
+### Vision
+
+To help businesses and CA firms automatically reconcile GST purchase data with GSTR-2B, identify mismatches, and prevent Input Tax Credit (ITC) loss.
+
+### Objective (Phase 1)
+
+Build a web-based SaaS that:
+
+* Accepts purchase register and GSTR-2B
+* Automatically reconciles invoices
+* Highlights mismatches
+* Provides actionable reports
+
+---
+
+## 2. Problem Statement
+
+Businesses manually compare purchase data with GSTR-2B every month using Excel. This process:
+
+* Takes 3–6 hours per client
+* Is error-prone
+* Leads to ITC loss
+* Increases risk of GST notices
+
+There is a need for an automated reconciliation system.
+
+---
+
+## 3. Target Users
+
+### Primary Users
+
+* Chartered Accountants (CA firms)
+* Accounting professionals
+
+### Secondary Users
+
+* SMEs
+* Startups
+* Traders / wholesalers
+* E-commerce sellers
+
+---
+
+## 4. User Personas
+
+### Persona 1 – CA
+
+* Handles 20–50 clients
+* Monthly reconciliation workload
+* Needs quick mismatch reports
+
+### Persona 2 – Business Owner
+
+* Not GST expert
+* Wants to know:
+
+  * ITC available
+  * ITC at risk
+  * Vendor issues
+
+---
+
+## 5. MVP Scope (Phase 1)
+
+### Included Features
+
+1. User Authentication
+2. Client Management (optional in Phase 1)
+3. Upload Purchase Register (CSV)
+4. Upload GSTR-2B (CSV/Excel)
+5. Reconciliation Engine
+6. Mismatch Dashboard
+7. Export Report (Excel)
+
+---
+
+## 6. Out of Scope (Later Phases)
+
+* GST Portal API integration
+* GSTR-1 reconciliation
+* Vendor follow-up automation
+* Income Tax features
+* Payment integration (optional Phase 2)
+
+---
+
+## 7. User Flow
+
+### Step 1 – Login
+
+User logs into web app
+
+### Step 2 – Upload Data
+
+User uploads:
+
+* Purchase Register CSV
+* GSTR-2B CSV
+
+### Step 3 – Run Reconciliation
+
+System processes and compares invoices
+
+### Step 4 – View Results
+
+Dashboard shows:
+
+* Matched invoices
+* Missing in 2B
+* Amount mismatch
+* ITC at risk
+
+### Step 5 – Export
+
+User downloads Excel report
+
+---
+
+## 8. Functional Requirements
+
+### 8.1 Authentication
+
+* Email + Password
+* JWT session
+
+---
+
+### 8.2 File Upload
+
+Supported fields (Purchase CSV):
+
+| Field          | Required |
+| -------------- | -------- |
+| Invoice No     | Yes      |
+| Supplier GSTIN | Yes      |
+| Invoice Date   | Yes      |
+| GST Amount     | Yes      |
+
+GSTR-2B fields:
+
+* Invoice No
+* Supplier GSTIN
+* GST Amount
+
+---
+
+### 8.3 Reconciliation Logic
+
+Matching Key:
+
+```
+Invoice No + Supplier GSTIN
+```
+
+Cases:
+
+| Case                   | Status           |
+| ---------------------- | ---------------- |
+| Exact match            | MATCHED          |
+| Invoice not in 2B      | MISSING_IN_2B    |
+| GST amount differs     | AMOUNT_MISMATCH  |
+| In 2B but not in books | MISSING_IN_BOOKS |
+
+---
+
+### 8.4 Dashboard Metrics
+
+Show:
+
+* Total Purchase Invoices
+* Matched
+* Missing in 2B
+* Amount mismatches
+* Total ITC at risk
+
+---
+
+### 8.5 Report Export
+
+Excel columns:
+
+| Invoice | GSTIN | Books GST | 2B GST | Status | Remark |
+
+---
+
+## 9. Non-Functional Requirements
+
+| Requirement  | Target                             |
+| ------------ | ---------------------------------- |
+| Performance  | Process 5,000 invoices in < 10 sec |
+| Security     | Password hashing, JWT              |
+| Scalability  | Multi-tenant ready                 |
+| Availability | Cloud deployment                   |
+
+---
+
+## 10. Tech Stack
+
+Frontend:
+
+* React / Vite
+
+Backend:
+
+* Node.js + Express
+
+Database:
+
+* PostgreSQL
+
+File Processing:
+
+* CSV parser
+
+Hosting:
+
+* Backend: Render / Railway
+* DB: Neon / Supabase
+* Frontend: Vercel
+
+---
+
+## 11. Database Schema (MVP)
+
+Users
+
+* id
+* email
+* password
+
+Purchase_Invoices
+
+* id
+* user_id
+* invoice_no
+* supplier_gstin
+* gst_amount
+
+GSTR2B_Invoices
+
+* id
+* user_id
+* invoice_no
+* supplier_gstin
+* gst_amount
+
+Reconciliation_Results
+
+* id
+* user_id
+* invoice_no
+* status
+* remark
+
+---
+
+## 12. Success Metrics
+
+### Product Metrics
+
+* Time to reconcile: < 1 minute
+* Error detection accuracy > 95%
+
+### Business Metrics (Later)
+
+* Number of active users
+* Clients per CA
+* Monthly recurring revenue (MRR)
+
+---
+
+## 13. Future Roadmap
+
+### Phase 2
+
+* Multi-client support
+* Razorpay subscription
+* Email alerts
+* Vendor non-filing detection
+
+### Phase 3
+
+* GST API integration
+* GSTR-1 reconciliation
+* ITC prediction
+* CA practice management
+
+---
+
+## 14. Unique Value Proposition
+
+* Saves hours of manual work
+* Prevents ITC loss
+* Reduces GST notice risk
+* Designed for Indian CA workflows
+
+---
+
+## 15. MVP Timeline (12 Weeks)
+
+| Week  | Task                  |
+| ----- | --------------------- |
+| 1–2   | Auth + DB setup       |
+| 3–4   | File upload           |
+| 5–6   | Reconciliation engine |
+| 7     | Dashboard             |
+| 8     | Export                |
+| 9–10  | Multi-user support    |
+| 11–12 | Deployment            |
+
+---
+
+
