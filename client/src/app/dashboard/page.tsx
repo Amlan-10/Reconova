@@ -125,8 +125,8 @@ export default function DashboardPage() {
     const [editSessionPeriod, setEditSessionPeriod] = useState("");
 
     const isFreeUser = user?.plan === "free";
-    const trialUsed = user?.trialSessionsUsed ?? 0;
     const trialLimit = 3;
+    const trialUsed = isFreeUser ? sessions.length : 0;
     const trialRemaining = Math.max(0, trialLimit - trialUsed);
 
     useEffect(() => {
@@ -151,7 +151,8 @@ export default function DashboardPage() {
 
     // Sync fresh user data (plan/trial) from server once on mount
     useEffect(() => {
-        refreshUser();
+        const token = localStorage.getItem("reconova_token");
+        if (token) refreshUser();
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const fetchResults = useCallback(async (sessionId: string) => {

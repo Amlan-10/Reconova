@@ -14,18 +14,23 @@ export const createSession = async (
     try {
         const { name, period } = req.body;
 
-        // Check trial limit for free users
+        // Check trial limit for free users by counting actual sessions
         const currentUser = await prisma.user.findUnique({
             where: { id: req.userId! },
-            select: { plan: true, trialSessionsUsed: true },
+            select: { plan: true },
         });
 
-        if (currentUser && currentUser.plan === "free" && currentUser.trialSessionsUsed >= 3) {
-            res.status(403).json({
-                error: "You've used all 3 free trial sessions. Upgrade to continue.",
-                trialLimitReached: true,
+        if (currentUser && currentUser.plan === "free") {
+            const sessionCount = await prisma.reconciliationSession.count({
+                where: { userId: req.userId! },
             });
-            return;
+            if (sessionCount >= 3) {
+                res.status(403).json({
+                    error: "You've used all 3 free trial sessions. Upgrade to continue.",
+                    trialLimitReached: true,
+                });
+                return;
+            }
         }
 
         const session = await prisma.reconciliationSession.create({
@@ -36,17 +41,14 @@ export const createSession = async (
             },
         });
 
-        // Increment trial sessions used for free users
-        if (currentUser && currentUser.plan === "free") {
-            await prisma.user.update({
-                where: { id: req.userId! },
-                data: { trialSessionsUsed: { increment: 1 } },
-            });
-        }
+        // Count sessions after creation
+        const newCount = await prisma.reconciliationSession.count({
+            where: { userId: req.userId! },
+        });
 
         res.status(201).json({
             session,
-            trialSessionsUsed: (currentUser?.trialSessionsUsed ?? 0) + 1,
+            trialSessionsUsed: newCount,
         });
     } catch (error) {
         console.error("Create session error:", error);
@@ -142,27 +144,14 @@ export const deleteSession = async (
             where: { id: sessionId },
         });
 
-        // Decrement trial sessions used for free users
-        const currentUser = await prisma.user.findUnique({
-            where: { id: req.userId! },
-            select: { plan: true, trialSessionsUsed: true },
-        });
-
-        if (currentUser && currentUser.plan === "free" && currentUser.trialSessionsUsed > 0) {
-            await prisma.user.update({
-                where: { id: req.userId! },
-                data: { trialSessionsUsed: { decrement: 1 } },
-            });
-        }
-
-        const updatedUser = await prisma.user.findUnique({
-            where: { id: req.userId! },
-            select: { trialSessionsUsed: true },
+        // Count remaining sessions
+        const remainingCount = await prisma.reconciliationSession.count({
+            where: { userId: req.userId! },
         });
 
         res.json({
             message: "Session deleted successfully.",
-            trialSessionsUsed: updatedUser?.trialSessionsUsed ?? 0,
+            trialSessionsUsed: remainingCount,
         });
     } catch (error) {
         console.error("Delete session error:", error);

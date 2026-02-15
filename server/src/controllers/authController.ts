@@ -118,6 +118,20 @@ export const getProfile = async (
             return;
         }
 
+        // For free users, sync trialSessionsUsed with actual session count
+        if (user.plan === "free") {
+            const actualCount = await prisma.reconciliationSession.count({
+                where: { userId: user.id },
+            });
+            if (actualCount !== user.trialSessionsUsed) {
+                await prisma.user.update({
+                    where: { id: user.id },
+                    data: { trialSessionsUsed: actualCount },
+                });
+                user.trialSessionsUsed = actualCount;
+            }
+        }
+
         res.json({ user });
     } catch (error) {
         console.error("Profile error:", error);
