@@ -4,6 +4,8 @@ import { upload } from "../middleware/upload";
 import {
     createSession,
     getSessions,
+    updateSession,
+    deleteSession,
     uploadPurchaseRegister,
     uploadGSTR2B,
 } from "../controllers/uploadController";
@@ -16,6 +18,8 @@ router.use(authMiddleware);
 // Session management
 router.post("/sessions", createSession);
 router.get("/sessions", getSessions);
+router.patch("/sessions/:sessionId", updateSession);
+router.delete("/sessions/:sessionId", deleteSession);
 
 // File uploads (per session)
 router.post(

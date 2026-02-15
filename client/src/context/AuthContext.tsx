@@ -18,6 +18,7 @@ interface AuthContextType {
     register: (email: string, password: string, name?: string) => Promise<void>;
     logout: () => void;
     updateTrialUsage: (count: number) => void;
+    refreshUser: () => Promise<void>;
     isLoading: boolean;
 }
 
@@ -71,8 +72,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    const refreshUser = async () => {
+        try {
+            const res = await api.get("/auth/profile");
+            if (res.data.user) {
+                const freshUser = {
+                    id: res.data.user.id,
+                    email: res.data.user.email,
+                    name: res.data.user.name,
+                    plan: res.data.user.plan ?? "free",
+                    trialSessionsUsed: res.data.user.trialSessionsUsed ?? 0,
+                };
+                setUser(freshUser);
+                localStorage.setItem("reconova_user", JSON.stringify(freshUser));
+            }
+        } catch {
+            console.error("Failed to refresh user");
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, token, login, register, logout, updateTrialUsage, isLoading }}>
+        <AuthContext.Provider value={{ user, token, login, register, logout, updateTrialUsage, refreshUser, isLoading }}>
             {children}
         </AuthContext.Provider>
     );

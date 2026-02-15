@@ -36,6 +36,8 @@ import {
     Zap,
     Crown,
     X,
+    Pencil,
+    Trash2,
 } from "lucide-react";
 import api from "@/lib/api";
 
@@ -101,7 +103,7 @@ const STATUS_CONFIG: Record<
 };
 
 export default function DashboardPage() {
-    const { user, logout, updateTrialUsage, isLoading: authLoading } = useAuth();
+    const { user, logout, updateTrialUsage, refreshUser, isLoading: authLoading } = useAuth();
     const router = useRouter();
 
     const [sessions, setSessions] = useState<Session[]>([]);
@@ -117,6 +119,10 @@ export default function DashboardPage() {
     const [newSessionName, setNewSessionName] = useState("");
     const [newSessionPeriod, setNewSessionPeriod] = useState("");
     const [trialLimitModal, setTrialLimitModal] = useState(false);
+    const [editSessionModal, setEditSessionModal] = useState(false);
+    const [editingSession, setEditingSession] = useState<Session | null>(null);
+    const [editSessionName, setEditSessionName] = useState("");
+    const [editSessionPeriod, setEditSessionPeriod] = useState("");
 
     const isFreeUser = user?.plan === "free";
     const trialUsed = user?.trialSessionsUsed ?? 0;
@@ -142,6 +148,11 @@ export default function DashboardPage() {
     useEffect(() => {
         if (user) fetchSessions();
     }, [user, fetchSessions]);
+
+    // Sync fresh user data (plan/trial) from server once on mount
+    useEffect(() => {
+        refreshUser();
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const fetchResults = useCallback(async (sessionId: string) => {
         try {
@@ -193,6 +204,55 @@ export default function DashboardPage() {
             } else {
                 console.error("Failed to create session");
             }
+        }
+    };
+
+    const handleEditSession = (session: Session, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setEditingSession(session);
+        setEditSessionName(session.name || "");
+        setEditSessionPeriod(session.period || "");
+        setEditSessionModal(true);
+    };
+
+    const saveEditSession = async () => {
+        if (!editingSession) return;
+        try {
+            const res = await api.patch(`/upload/sessions/${editingSession.id}`, {
+                name: editSessionName || undefined,
+                period: editSessionPeriod || undefined,
+            });
+            setSessions((prev) =>
+                prev.map((s) =>
+                    s.id === editingSession.id ? { ...s, ...res.data.session } : s
+                )
+            );
+            if (activeSession?.id === editingSession.id) {
+                setActiveSession((prev) => prev ? { ...prev, ...res.data.session } : prev);
+            }
+            setEditSessionModal(false);
+            setEditingSession(null);
+        } catch {
+            console.error("Failed to update session");
+        }
+    };
+
+    const handleDeleteSession = async (session: Session, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!confirm(`Delete "${session.name || "Untitled Session"}"? This will remove all its data permanently.`)) return;
+        try {
+            const res = await api.delete(`/upload/sessions/${session.id}`);
+            setSessions((prev) => prev.filter((s) => s.id !== session.id));
+            if (activeSession?.id === session.id) {
+                setActiveSession(null);
+                setResults([]);
+                setSummary(null);
+            }
+            if (res.data.trialSessionsUsed !== undefined) {
+                updateTrialUsage(res.data.trialSessionsUsed);
+            }
+        } catch {
+            console.error("Failed to delete session");
         }
     };
 
@@ -451,7 +511,7 @@ export default function DashboardPage() {
                                 </div>
                             ) : (
                                 sessions.map((session) => (
-                                    <button
+                                    <div
                                         key={session.id}
                                         onClick={() => {
                                             setActiveSession(session);
@@ -498,18 +558,60 @@ export default function DashboardPage() {
                                                 <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{session.period}</span>
                                             </div>
                                         )}
-                                        <div style={{ display: "flex", gap: 12, fontSize: 12, color: "var(--text-secondary)" }}>
-                                            <span>{session._count.purchaseInvoices} purchases</span>
-                                            <span>·</span>
-                                            <span>{session._count.gstr2bInvoices} 2B</span>
-                                            {session._count.reconciliationResults > 0 && (
-                                                <>
-                                                    <span>·</span>
-                                                    <span style={{ color: "var(--primary)" }}>✓ reconciled</span>
-                                                </>
-                                            )}
+                                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                            <div style={{ display: "flex", gap: 12, fontSize: 12, color: "var(--text-secondary)" }}>
+                                                <span>{session._count?.purchaseInvoices ?? 0} purchases</span>
+                                                <span>·</span>
+                                                <span>{session._count?.gstr2bInvoices ?? 0} 2B</span>
+                                                {(session._count?.reconciliationResults ?? 0) > 0 && (
+                                                    <>
+                                                        <span>·</span>
+                                                        <span style={{ color: "var(--primary)" }}>✓ reconciled</span>
+                                                    </>
+                                                )}
+                                            </div>
+                                            <div style={{ display: "flex", gap: 4 }}>
+                                                <button
+                                                    onClick={(e) => handleEditSession(session, e)}
+                                                    title="Edit session"
+                                                    style={{
+                                                        padding: 4,
+                                                        borderRadius: 6,
+                                                        background: "transparent",
+                                                        border: "none",
+                                                        cursor: "pointer",
+                                                        color: "var(--text-muted)",
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        transition: "color 0.2s",
+                                                    }}
+                                                    onMouseEnter={(e) => { e.currentTarget.style.color = "var(--primary)"; }}
+                                                    onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
+                                                >
+                                                    <Pencil style={{ width: 13, height: 13 }} />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => handleDeleteSession(session, e)}
+                                                    title="Delete session"
+                                                    style={{
+                                                        padding: 4,
+                                                        borderRadius: 6,
+                                                        background: "transparent",
+                                                        border: "none",
+                                                        cursor: "pointer",
+                                                        color: "var(--text-muted)",
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        transition: "color 0.2s",
+                                                    }}
+                                                    onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; }}
+                                                    onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
+                                                >
+                                                    <Trash2 style={{ width: 13, height: 13 }} />
+                                                </button>
+                                            </div>
                                         </div>
-                                    </button>
+                                    </div>
                                 ))
                             )}
                         </div>
@@ -1146,6 +1248,116 @@ export default function DashboardPage() {
                 )}
             </AnimatePresence>
 
+            {/* Edit Session Modal */}
+            <AnimatePresence>
+                {editSessionModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setEditSessionModal(false)}
+                        style={{
+                            position: "fixed",
+                            inset: 0,
+                            zIndex: 100,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: 16,
+                            background: "rgba(0,0,0,0.7)",
+                        }}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                                width: "100%",
+                                maxWidth: 440,
+                                padding: 32,
+                                borderRadius: 16,
+                                background: "var(--surface)",
+                                border: "1px solid var(--border)",
+                            }}
+                        >
+                            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20, color: "var(--text-primary)" }}>
+                                Edit Session
+                            </h3>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                                <div>
+                                    <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6, display: "block" }}>Session Name</label>
+                                    <input
+                                        value={editSessionName}
+                                        onChange={(e) => setEditSessionName(e.target.value)}
+                                        placeholder="e.g. Q1 Reconciliation"
+                                        style={{
+                                            width: "100%",
+                                            padding: "10px 14px",
+                                            borderRadius: 10,
+                                            background: "var(--background)",
+                                            border: "1px solid var(--border)",
+                                            color: "var(--text-primary)",
+                                            fontSize: 14,
+                                            outline: "none",
+                                        }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6, display: "block" }}>Period</label>
+                                    <input
+                                        value={editSessionPeriod}
+                                        onChange={(e) => setEditSessionPeriod(e.target.value)}
+                                        placeholder="e.g. Jan 2024"
+                                        style={{
+                                            width: "100%",
+                                            padding: "10px 14px",
+                                            borderRadius: 10,
+                                            background: "var(--background)",
+                                            border: "1px solid var(--border)",
+                                            color: "var(--text-primary)",
+                                            fontSize: 14,
+                                            outline: "none",
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                            <div style={{ display: "flex", gap: 12, marginTop: 20, justifyContent: "flex-end" }}>
+                                <button
+                                    onClick={() => setEditSessionModal(false)}
+                                    style={{
+                                        padding: "10px 20px",
+                                        borderRadius: 10,
+                                        background: "transparent",
+                                        border: "1px solid var(--border)",
+                                        color: "var(--text-secondary)",
+                                        cursor: "pointer",
+                                        fontSize: 14,
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={saveEditSession}
+                                    style={{
+                                        padding: "10px 20px",
+                                        borderRadius: 10,
+                                        background: "var(--primary)",
+                                        color: "white",
+                                        fontWeight: 600,
+                                        border: "none",
+                                        cursor: "pointer",
+                                        fontSize: 14,
+                                    }}
+                                >
+                                    Save Changes
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Trial Limit Reached Modal */}
             <AnimatePresence>
                 {trialLimitModal && (
@@ -1280,7 +1492,7 @@ export default function DashboardPage() {
           to { transform: rotate(360deg); }
         }
       `}</style>
-        </div>
+        </div >
     );
 }
 

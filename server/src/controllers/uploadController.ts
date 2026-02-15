@@ -84,6 +84,93 @@ export const getSessions = async (
 };
 
 /**
+ * Update a reconciliation session (name/period).
+ */
+export const updateSession = async (
+    req: AuthRequest,
+    res: Response
+): Promise<void> => {
+    try {
+        const { sessionId } = req.params;
+        const { name, period } = req.body;
+
+        const session = await prisma.reconciliationSession.findFirst({
+            where: { id: sessionId, userId: req.userId! },
+        });
+
+        if (!session) {
+            res.status(404).json({ error: "Session not found." });
+            return;
+        }
+
+        const updated = await prisma.reconciliationSession.update({
+            where: { id: sessionId },
+            data: {
+                ...(name !== undefined && { name }),
+                ...(period !== undefined && { period: period || null }),
+            },
+        });
+
+        res.json({ session: updated });
+    } catch (error) {
+        console.error("Update session error:", error);
+        res.status(500).json({ error: "Failed to update session." });
+    }
+};
+
+/**
+ * Delete a reconciliation session and all related data.
+ */
+export const deleteSession = async (
+    req: AuthRequest,
+    res: Response
+): Promise<void> => {
+    try {
+        const { sessionId } = req.params;
+
+        const session = await prisma.reconciliationSession.findFirst({
+            where: { id: sessionId, userId: req.userId! },
+        });
+
+        if (!session) {
+            res.status(404).json({ error: "Session not found." });
+            return;
+        }
+
+        // Delete session (cascades to invoices and results)
+        await prisma.reconciliationSession.delete({
+            where: { id: sessionId },
+        });
+
+        // Decrement trial sessions used for free users
+        const currentUser = await prisma.user.findUnique({
+            where: { id: req.userId! },
+            select: { plan: true, trialSessionsUsed: true },
+        });
+
+        if (currentUser && currentUser.plan === "free" && currentUser.trialSessionsUsed > 0) {
+            await prisma.user.update({
+                where: { id: req.userId! },
+                data: { trialSessionsUsed: { decrement: 1 } },
+            });
+        }
+
+        const updatedUser = await prisma.user.findUnique({
+            where: { id: req.userId! },
+            select: { trialSessionsUsed: true },
+        });
+
+        res.json({
+            message: "Session deleted successfully.",
+            trialSessionsUsed: updatedUser?.trialSessionsUsed ?? 0,
+        });
+    } catch (error) {
+        console.error("Delete session error:", error);
+        res.status(500).json({ error: "Failed to delete session." });
+    }
+};
+
+/**
  * Upload Purchase Register CSV/Excel for a session.
  */
 export const uploadPurchaseRegister = async (
