@@ -33,6 +33,9 @@ import {
     Sparkles,
     ChevronRight,
     Calendar,
+    Zap,
+    Crown,
+    X,
 } from "lucide-react";
 import api from "@/lib/api";
 
@@ -98,7 +101,7 @@ const STATUS_CONFIG: Record<
 };
 
 export default function DashboardPage() {
-    const { user, logout, isLoading: authLoading } = useAuth();
+    const { user, logout, updateTrialUsage, isLoading: authLoading } = useAuth();
     const router = useRouter();
 
     const [sessions, setSessions] = useState<Session[]>([]);
@@ -113,6 +116,12 @@ export default function DashboardPage() {
     const [newSessionModal, setNewSessionModal] = useState(false);
     const [newSessionName, setNewSessionName] = useState("");
     const [newSessionPeriod, setNewSessionPeriod] = useState("");
+    const [trialLimitModal, setTrialLimitModal] = useState(false);
+
+    const isFreeUser = user?.plan === "free";
+    const trialUsed = user?.trialSessionsUsed ?? 0;
+    const trialLimit = 3;
+    const trialRemaining = Math.max(0, trialLimit - trialUsed);
 
     useEffect(() => {
         if (!authLoading && !user) router.push("/");
@@ -149,19 +158,41 @@ export default function DashboardPage() {
         if (activeSession) fetchResults(activeSession.id);
     }, [activeSession, fetchResults]);
 
+    const handleNewSessionClick = () => {
+        if (isFreeUser && trialUsed >= trialLimit) {
+            setTrialLimitModal(true);
+            return;
+        }
+        setNewSessionModal(true);
+    };
+
     const createSession = async () => {
         try {
             const res = await api.post("/upload/sessions", {
                 name: newSessionName || undefined,
                 period: newSessionPeriod || undefined,
             });
-            setSessions((prev) => [res.data.session, ...prev]);
-            setActiveSession(res.data.session);
+            const newSession = {
+                ...res.data.session,
+                _count: { purchaseInvoices: 0, gstr2bInvoices: 0, reconciliationResults: 0 },
+            };
+            setSessions((prev) => [newSession, ...prev]);
+            setActiveSession(newSession);
             setNewSessionModal(false);
             setNewSessionName("");
             setNewSessionPeriod("");
-        } catch {
-            console.error("Failed to create session");
+            // Update trial usage in auth context
+            if (res.data.trialSessionsUsed !== undefined) {
+                updateTrialUsage(res.data.trialSessionsUsed);
+            }
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { trialLimitReached?: boolean } } };
+            if (error.response?.data?.trialLimitReached) {
+                setNewSessionModal(false);
+                setTrialLimitModal(true);
+            } else {
+                console.error("Failed to create session");
+            }
         }
     };
 
@@ -308,6 +339,27 @@ export default function DashboardPage() {
                         </span>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                        {isFreeUser && (
+                            <div
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 8,
+                                    padding: "6px 14px",
+                                    borderRadius: 8,
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    background: trialRemaining > 0
+                                        ? "rgba(28, 151, 25, 0.1)"
+                                        : "rgba(232, 163, 23, 0.1)",
+                                    border: `1px solid ${trialRemaining > 0 ? "rgba(28, 151, 25, 0.3)" : "rgba(232, 163, 23, 0.3)"}`,
+                                    color: trialRemaining > 0 ? "var(--primary)" : "#E8A317",
+                                }}
+                            >
+                                <Zap style={{ width: 14, height: 14 }} />
+                                Free Trial: {trialUsed}/{trialLimit} sessions used
+                            </div>
+                        )}
                         <span style={{ fontSize: 14, color: "var(--text-secondary)" }}>{user.email}</span>
                         <button
                             onClick={logout}
@@ -352,7 +404,7 @@ export default function DashboardPage() {
                                 Sessions
                             </h2>
                             <button
-                                onClick={() => setNewSessionModal(true)}
+                                onClick={handleNewSessionClick}
                                 style={{
                                     padding: 6,
                                     borderRadius: 8,
@@ -501,7 +553,7 @@ export default function DashboardPage() {
                                     Upload your Purchase Register and GSTR-2B to begin reconciliation
                                 </p>
                                 <button
-                                    onClick={() => setNewSessionModal(true)}
+                                    onClick={handleNewSessionClick}
                                     style={{
                                         padding: "12px 24px",
                                         borderRadius: 12,
@@ -1089,6 +1141,135 @@ export default function DashboardPage() {
                                     Create Session
                                 </button>
                             </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Trial Limit Reached Modal */}
+            <AnimatePresence>
+                {trialLimitModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setTrialLimitModal(false)}
+                        style={{
+                            position: "fixed",
+                            inset: 0,
+                            zIndex: 100,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: 16,
+                            background: "rgba(0,0,0,0.7)",
+                        }}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                                width: "100%",
+                                maxWidth: 440,
+                                padding: 32,
+                                borderRadius: 16,
+                                background: "var(--surface)",
+                                border: "1px solid var(--border)",
+                                textAlign: "center",
+                                position: "relative",
+                            }}
+                        >
+                            <button
+                                onClick={() => setTrialLimitModal(false)}
+                                style={{
+                                    position: "absolute",
+                                    top: 16,
+                                    right: 16,
+                                    background: "none",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    color: "var(--text-muted)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                }}
+                            >
+                                <X style={{ width: 18, height: 18 }} />
+                            </button>
+
+                            <div
+                                style={{
+                                    width: 64,
+                                    height: 64,
+                                    borderRadius: 16,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    margin: "0 auto 20px",
+                                    background: "rgba(232, 163, 23, 0.1)",
+                                    border: "1px solid rgba(232, 163, 23, 0.3)",
+                                }}
+                            >
+                                <Crown style={{ width: 28, height: 28, color: "#E8A317" }} />
+                            </div>
+
+                            <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8, color: "var(--text-primary)" }}>
+                                Free Trial Complete
+                            </h3>
+                            <p style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 24, lineHeight: 1.6 }}>
+                                You&apos;ve used all {trialLimit} free reconciliation sessions.
+                                Upgrade to a paid plan for unlimited sessions, priority support, and more.
+                            </p>
+
+                            <div
+                                style={{
+                                    padding: 16,
+                                    borderRadius: 12,
+                                    background: "rgba(28, 151, 25, 0.05)",
+                                    border: "1px solid rgba(28, 151, 25, 0.2)",
+                                    marginBottom: 24,
+                                }}
+                            >
+                                <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 8 }}>Plan includes:</p>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                    {["Unlimited reconciliation sessions", "Priority email support", "Advanced export options"].map((item, i) => (
+                                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-primary)" }}>
+                                            <CheckCircle2 style={{ width: 14, height: 14, color: "var(--primary)", flexShrink: 0 }} />
+                                            {item}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => {
+                                    // Placeholder for Razorpay integration
+                                    alert("Payment integration coming soon! Contact us to upgrade.");
+                                }}
+                                style={{
+                                    width: "100%",
+                                    padding: "14px 0",
+                                    borderRadius: 12,
+                                    color: "white",
+                                    fontWeight: 600,
+                                    fontSize: 14,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: 8,
+                                    border: "none",
+                                    cursor: "pointer",
+                                    background: "linear-gradient(135deg, #E8A317, #f59e0b)",
+                                    boxShadow: "0 4px 20px rgba(232, 163, 23, 0.3)",
+                                    transition: "transform 0.2s",
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.02)"; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+                            >
+                                <Crown style={{ width: 16, height: 16 }} />
+                                Upgrade Now
+                            </button>
                         </motion.div>
                     </motion.div>
                 )}

@@ -14,6 +14,20 @@ export const createSession = async (
     try {
         const { name, period } = req.body;
 
+        // Check trial limit for free users
+        const currentUser = await prisma.user.findUnique({
+            where: { id: req.userId! },
+            select: { plan: true, trialSessionsUsed: true },
+        });
+
+        if (currentUser && currentUser.plan === "free" && currentUser.trialSessionsUsed >= 3) {
+            res.status(403).json({
+                error: "You've used all 3 free trial sessions. Upgrade to continue.",
+                trialLimitReached: true,
+            });
+            return;
+        }
+
         const session = await prisma.reconciliationSession.create({
             data: {
                 userId: req.userId!,
@@ -22,7 +36,18 @@ export const createSession = async (
             },
         });
 
-        res.status(201).json({ session });
+        // Increment trial sessions used for free users
+        if (currentUser && currentUser.plan === "free") {
+            await prisma.user.update({
+                where: { id: req.userId! },
+                data: { trialSessionsUsed: { increment: 1 } },
+            });
+        }
+
+        res.status(201).json({
+            session,
+            trialSessionsUsed: (currentUser?.trialSessionsUsed ?? 0) + 1,
+        });
     } catch (error) {
         console.error("Create session error:", error);
         res.status(500).json({ error: "Failed to create session." });

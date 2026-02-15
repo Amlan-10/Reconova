@@ -12,6 +12,8 @@ model User {
   email     String   @unique
   password  String
   name      String?
+  plan      String   @default("free") @map("plan")
+  trialSessionsUsed Int @default(0) @map("trial_sessions_used")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

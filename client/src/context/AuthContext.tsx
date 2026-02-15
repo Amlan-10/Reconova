@@ -7,6 +7,8 @@ interface User {
     id: string;
     email: string;
     name: string | null;
+    plan: string;
+    trialSessionsUsed: number;
 }
 
 interface AuthContextType {
@@ -15,6 +17,7 @@ interface AuthContextType {
     login: (email: string, password: string) => Promise<void>;
     register: (email: string, password: string, name?: string) => Promise<void>;
     logout: () => void;
+    updateTrialUsage: (count: number) => void;
     isLoading: boolean;
 }
 
@@ -60,8 +63,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem("reconova_user");
     };
 
+    const updateTrialUsage = (count: number) => {
+        if (user) {
+            const updatedUser = { ...user, trialSessionsUsed: count };
+            setUser(updatedUser);
+            localStorage.setItem("reconova_user", JSON.stringify(updatedUser));
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, token, login, register, logout, isLoading }}>
+        <AuthContext.Provider value={{ user, token, login, register, logout, updateTrialUsage, isLoading }}>
             {children}
         </AuthContext.Provider>
     );

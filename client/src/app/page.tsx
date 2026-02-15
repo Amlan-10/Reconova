@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   FileSpreadsheet,
   BarChart3,
+  Zap,
 } from "lucide-react";
 
 export default function AuthPage() {
@@ -182,6 +183,55 @@ export default function AuthPage() {
             Stop losing hours on manual reconciliation. Automatically match your
             purchase register with GSTR-2B and protect your ITC.
           </p>
+
+          {/* Try for Free CTA */}
+          <button
+            onClick={() => {
+              setIsLogin(false);
+              setError("");
+            }}
+            style={{
+              marginTop: 24,
+              padding: "14px 28px",
+              borderRadius: 12,
+              color: "white",
+              fontWeight: 600,
+              fontSize: 15,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 10,
+              border: "none",
+              cursor: "pointer",
+              background: "var(--gradient-primary)",
+              boxShadow: "0 4px 24px rgba(28, 151, 25, 0.35)",
+              transition: "transform 0.2s, box-shadow 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "scale(1.05)";
+              e.currentTarget.style.boxShadow = "0 6px 30px rgba(28, 151, 25, 0.5)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "scale(1)";
+              e.currentTarget.style.boxShadow = "0 4px 24px rgba(28, 151, 25, 0.35)";
+            }}
+          >
+            <Zap style={{ width: 18, height: 18 }} />
+            Try for Free
+            <ArrowRight style={{ width: 16, height: 16 }} />
+          </button>
+          <p
+            style={{
+              marginTop: 12,
+              fontSize: 13,
+              color: "var(--text-muted)",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <CheckCircle2 style={{ width: 14, height: 14, color: "var(--primary)" }} />
+            No credit card required · 3 free reconciliations
+          </p>
         </motion.div>
 
         {/* Features Grid */}
@@ -257,7 +307,7 @@ export default function AuthPage() {
           <p style={{ marginBottom: 32, color: "var(--text-secondary)", fontSize: 15 }}>
             {isLogin
               ? "Log in to continue to your dashboard"
-              : "Start reconciling your GST data in minutes"}
+              : "Start your free trial — 3 reconciliations, no credit card needed"}
           </p>
 
           <AnimatePresence mode="wait">
@@ -477,7 +527,7 @@ export default function AuthPage() {
                 />
               ) : (
                 <>
-                  {isLogin ? "Sign In" : "Create Account"}
+                  {isLogin ? "Sign In" : "Start Free Trial"}
                   <ArrowRight style={{ width: 16, height: 16 }} />
                 </>
               )}
